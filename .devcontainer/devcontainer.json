@@ -1,0 +1,13 @@
+{
+    "name": "JobFitAI Dev Env",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "app",
+    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+    "remoteUser": "root",
+    "extensions": [],
+    "settings": {},
+    "forwardPorts": [],
+    "postCreateCommand": "",
+    "shutdownAction": "stopCompose"
+  }
+  
