@@ -1,13 +1,20 @@
 {
-    "name": "JobFitAI Dev Env",
-    "dockerComposeFile": "docker-compose.yml",
-    "service": "app",
-    "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
-    "remoteUser": "root",
-    "extensions": [],
-    "settings": {},
-    "forwardPorts": [],
-    "postCreateCommand": "",
-    "shutdownAction": "stopCompose"
-  }
-  
+  "name": "JobFitAI Dev Env",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "app",
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+  "remoteUser": "root",
+  "extensions": [
+    "ms-python.python",
+    "ms-toolsai.jupyter",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "dsznajder.es7-react-js-snippets"
+  ],
+  "settings": {
+    "editor.formatOnSave": true
+  },
+  "forwardPorts": [8000, 27017, 6379, 3000],
+  "postCreateCommand": "pip install -r requirements.txt",
+  "shutdownAction": "stopCompose"
+}

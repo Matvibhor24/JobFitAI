@@ -1,0 +1,348 @@
+/* Root colors & fonts */
+:root {
+    --color-primary: #2274a5;
+    --color-primary-light: #4fa3e1;
+    --color-secondary: #f49d1a;
+    --color-white: #ffffff;
+    --color-background: #f9fafb;
+    --color-text-primary: #333;
+    --color-text-secondary: #555;
+    --color-error: #ea4335;
+    --font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  }
+  
+  body {
+    margin: 0;
+    font-family: var(--font-family);
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+  }
+  
+  .container {
+    width: 90%;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 1rem 0;
+  }
+  
+  .navbar {
+    background-color: var(--color-primary);
+    padding: 1rem 0;
+    color: var(--color-white);
+  }
+  
+  .nav-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .logo h2 {
+    margin: 0;
+  }
+  
+  .nav-actions button {
+    background-color: var(--color-secondary);
+    border: none;
+    border-radius: 4px;
+    color: var(--color-white);
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+  }
+  
+  .nav-actions button:hover {
+    background-color: #c37f0b;
+  }
+  
+  /* Section styling */
+  .section {
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+  
+  /* Landing */
+  .landing .hero {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .hero-content {
+    flex: 1 1 300px;
+    margin-right: 2rem;
+  }
+  
+  .hero-title {
+    font-size: 2.4rem;
+    margin-bottom: 1rem;
+  }
+  
+  .hero-subtitle {
+    font-size: 1.2rem;
+    margin-bottom: 1.5rem;
+    color: var(--color-text-secondary);
+  }
+  
+  .btn {
+    font-weight: 600;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .btn--primary {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+    padding: 0.75rem 1.5rem;
+  }
+  
+  .btn--primary:hover {
+    background-color: var(--color-primary-light);
+  }
+  
+  .btn--secondary {
+    background-color: var(--color-secondary);
+    color: var(--color-white);
+    padding: 0.5rem 1rem;
+  }
+  
+  .btn--secondary:hover {
+    background-color: #c37f0b;
+  }
+  
+  .btn--lg {
+    font-size: 1.1rem;
+  }
+  
+  .btn--sm {
+    font-size: 0.85rem;
+  }
+  
+  .features-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 2rem;
+  }
+  
+  .feature-card {
+    background-color: var(--color-white);
+    border-radius: 8px;
+    box-shadow: 0 1px 8px rgb(0 0 0 / 0.1);
+    padding: 1.5rem;
+    flex: 1 1 200px;
+    text-align: center;
+  }
+  
+  .feature-icon {
+    font-size: 2.5rem;
+    margin-bottom: 1rem;
+  }
+  
+  /* InputForm */
+  
+  .input-form form {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .input-form label {
+    margin: 0.75rem 0 0.5rem;
+    font-weight: 600;
+  }
+  
+  .input-form textarea,
+  .input-form input[type="text"] {
+    padding: 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #ccc;
+    font-family: var(--font-family);
+    font-size: 1rem;
+    resize: vertical;
+  }
+  
+  .input-form textarea {
+    min-height: 150px;
+  }
+  
+  .input-form button[type="submit"] {
+    margin-top: 1.5rem;
+  }
+  
+  /* Results Dashboard */
+  
+  .results-dashboard .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .results-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    border-bottom: 2px solid var(--color-primary);
+  }
+  
+  .results-tabs button {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.5rem 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    color: var(--color-primary);
+    transition: border-color 0.25s ease;
+  }
+  
+  .results-tabs button.active,
+  .results-tabs button:hover {
+    border-color: var(--color-secondary);
+  }
+  
+  .results-content {
+    padding: 1rem 0;
+  }
+  
+  /* JobFitScore */
+  
+  .circular-chart {
+    transform: rotate(-90deg);
+    margin: 0 auto;
+    display: block;
+    max-width: 150px;
+  }
+  
+  .circle-bg {
+    fill: none;
+    stroke: #eee;
+    stroke-width: 3.8;
+  }
+  
+  .circle {
+    fill: none;
+    stroke-width: 3.8;
+    stroke-linecap: round;
+    transition: stroke-dasharray 1s ease;
+  }
+  
+  .percentage {
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-align: center;
+    fill: #333;
+    transform: rotate(90deg);
+    dominant-baseline: middle;
+  }
+  
+  /* CVOptimization */
+  
+  .cv-optimization ul {
+    list-style: none;
+    padding-left: 0;
+  }
+  
+  .cv-optimization li {
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+  }
+  
+  .recommendation-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .copy-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+  
+  /* InterviewPrep */
+  
+  .prep-tabs {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .prep-tabs button {
+    background: none;
+    border: 2px solid var(--color-primary);
+    border-radius: 6px;
+    padding: 0.3rem 1rem;
+    cursor: pointer;
+    font-weight: 600;
+    color: var(--color-primary);
+    transition: background-color 0.25s ease;
+  }
+  
+  .prep-tabs button.active,
+  .prep-tabs button:hover {
+    background-color: var(--color-primary);
+    color: var(--color-white);
+  }
+  
+  .questions-list {
+    list-style: disc;
+    padding-left: 1.5rem;
+  }
+  
+  .question-item {
+    margin-bottom: 0.5rem;
+  }
+  
+  /* CompanyInsights */
+  
+  .company-insights ul,
+  .company-insights ol {
+    padding-left: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .company-insights li {
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+  }
+  
+  /* WebResearch */
+  
+  .web-research ul {
+    list-style: none;
+    padding-left: 0;
+  }
+  
+  .web-research li {
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+  }
+  
+  /* Responsive */
+  
+  @media (max-width: 600px) {
+    .hero {
+      flex-direction: column;
+      text-align: center;
+    }
+  
+    .hero-content {
+      margin-right: 0;
+    }
+  
+    .features-grid {
+      flex-direction: column;
+    }
+  
+    .results-tabs {
+      flex-direction: column;
+    }
+  
+    .prep-tabs {
+      flex-direction: column;
+    }
+  }
+  

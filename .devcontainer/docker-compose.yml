@@ -2,7 +2,7 @@ services:
   app:
     build:
       context: ..
-      dockerfile: .devcontainer/dockerfile
+      dockerfile: .devcontainer/Dockerfile
     volumes:
       - ../..:/workspaces:cached
     command: sleep infinity
