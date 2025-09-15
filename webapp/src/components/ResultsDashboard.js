@@ -54,7 +54,9 @@ export default function ResultsDashboard({ data, onNewAnalysis, loading }) {
         <div className="results-content">
           {loading && <p>Loading results...</p>}
 
-          {!loading && activeTab === "jobFitScore" && <JobFitScore score={data.jobFitAnalysis.score} />}
+          {!loading && activeTab === "jobFitScore" && (
+            <JobFitScore score={data.score} backendResult={data.result} />
+          )}
           {!loading && activeTab === "cvOptimization" && <CVOptimization data={data.jobFitAnalysis} />}
           {!loading && activeTab === "interviewPrep" && <InterviewPrep data={data.interviewPrep} />}
           {!loading && activeTab === "companyInsights" && <CompanyInsights data={data.companyInsights} />}

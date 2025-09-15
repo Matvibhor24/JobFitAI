@@ -1,160 +1,177 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Header from "./components/Header";
 import Landing from "./components/Landing";
 import InputForm from "./components/InputForm";
 import ResultsDashboard from "./components/ResultsDashboard";
-
-// Sample Data as in previous versions
+import ProcessingPage from "./components/ProcessingPage";
 const sampleData = {
-  sampleResume: `John Doe
-Software Developer
-
-EXPERIENCE:
-- 3+ years developing web applications using React, Node.js, and Python
-- Built RESTful APIs and microservices architecture
-- Experience with AWS, Docker, and CI/CD pipelines
-- Led team of 4 developers on e-commerce platform
-
-SKILLS:
-JavaScript, Python, React, Node.js, PostgreSQL, MongoDB, Git, AWS, Docker
-
-EDUCATION:
-B.Tech Computer Science - XYZ University (2020)`,
-  sampleJobDescription: {
-    company: "Tech Innovations Inc",
-    position: "Senior Full Stack Developer",
-    description:
-      "We are looking for a Senior Full Stack Developer with 5+ years of experience. Required skills: React, Node.js, Python, AWS, PostgreSQL. Experience with microservices and team leadership preferred. You will work on our core platform serving 1M+ users.",
-  },
   jobFitAnalysis: {
-    score: 78,
-    strengths: [
-      "Strong match in core technologies: React, Node.js, Python",
-      "Relevant AWS and database experience",
-      "Leadership experience aligns with team lead expectations",
-      "Microservices architecture experience",
-    ],
-    improvements: [
-      "Highlight specific team leadership achievements with metrics",
-      "Add more details about AWS services used",
-      "Mention specific PostgreSQL projects",
-      "Quantify the impact of your microservices work",
-    ],
-    missingKeywords: [
-      "PostgreSQL",
-      "microservices",
-      "scalability",
-      "team leadership",
-      "user-facing applications",
-    ],
-    recommendations: [
-      "Add 'Led cross-functional team of 4 developers, resulting in 30% faster delivery'",
-      "Include specific AWS services: 'EC2, RDS, Lambda, S3'",
-      "Mention database optimization: 'Optimized PostgreSQL queries reducing response time by 40%'",
-    ],
+    score: 0,
+    strengths: [],
+    improvements: [],
+    missingKeywords: [],
+    recommendations: [],
   },
   interviewPrep: {
-    technicalQuestions: [
-      "Explain the difference between REST and GraphQL",
-      "How would you scale a web application to handle 1M users?",
-      "Describe your experience with microservices architecture",
-      "Walk me through your approach to database optimization",
-    ],
-    behavioralQuestions: [
-      "Tell me about a time you led a challenging project",
-      "How do you handle conflicting priorities in a fast-paced environment?",
-      "Describe a situation where you had to learn a new technology quickly",
-    ],
-    companySpecificQuestions: [
-      "Why are you interested in working at Tech Innovations Inc?",
-      "How would you contribute to our platform serving 1M+ users?",
-      "What interests you about our mission to democratize technology?",
-    ],
+    technicalQuestions: [],
+    behavioralQuestions: [],
+    companySpecificQuestions: [],
   },
   companyInsights: {
-    hiringTrends: [
-      "Actively hiring 15+ developers across all levels",
-      "Focus on full-stack developers with cloud experience",
-      "Recent expansion into AI/ML team",
-      "Remote-first company culture",
-    ],
-    interviewProcess: [
-      "Initial screening call (30 mins)",
-      "Technical assessment (90 mins)",
-      "System design round (60 mins)",
-      "Cultural fit interview (45 mins)",
-      "Final round with engineering manager",
-    ],
-    employeeExperiences: [
-      "Positive work-life balance according to recent Glassdoor reviews",
-      "Strong learning and development opportunities",
-      "Competitive compensation with equity options",
-      "Flexible remote work policy",
-    ],
+    hiringTrends: [],
+    interviewProcess: [],
+    employeeExperiences: [],
   },
-  webResearch: {
-    latestNews: [
-      "Tech Innovations Inc raised $50M Series B funding (Last month)",
-      "Launched new AI-powered features on their platform",
-      "Acquired small startup to expand their team",
-      "CEO interview about scaling engineering teams",
-    ],
-    recentExperiences: [
-      "Software Engineer shared positive interview experience on LinkedIn",
-      "Technical round focuses on system design and scalability",
-      "Company values cultural fit and collaborative mindset",
-      "Average interview process takes 2-3 weeks",
-    ],
-  },
+  webResearch: { latestNews: [], recentExperiences: [] },
 };
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState("landing");
-  const [inputData, setInputData] = useState({
-    resume: sampleData.sampleResume,
-    jobDescription: sampleData.sampleJobDescription.description,
-    company: sampleData.sampleJobDescription.company,
-    position: sampleData.sampleJobDescription.position,
-  });
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileStatus, setFileStatus] = useState(null);
+  const [processingProgress, setProcessingProgress] = useState("");
+  const [inputData, setInputData] = useState({
+    resume: "",
+    jobDescription: "",
+    company: "",
+    position: "",
+  });
 
-  // Simulated backend call
-  const analyzeJobFit = () => {
+  useEffect(() => {
+    if (fileStatus?.file_id && currentPage === "processing") {
+      const eventSource = new EventSource(
+        `http://localhost:8000/stream/${fileStatus.file_id}`
+      );
+
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          console.log("SSE update:", data);
+
+          if (data.error) {
+            setProcessingProgress(`Error: ${data.error}`);
+            eventSource.close();
+            return;
+          }
+
+          setProcessingProgress(data.status);
+
+          if (data.status === "processed") {
+            // You only need score + result now
+            setAnalysisResult({
+              score: data.score || 0,
+              result: data.result || "",
+            });
+
+            setCurrentPage("results");
+            setLoading(false);
+            eventSource.close();
+          }
+        } catch (err) {
+          console.error("Invalid SSE data:", event.data);
+        }
+      };
+
+      eventSource.onerror = () => {
+        setProcessingProgress("Connection error");
+        eventSource.close();
+      };
+
+      return () => eventSource.close();
+    }
+  }, [fileStatus, currentPage]);
+
+  const analyzeJobFit = async () => {
     setLoading(true);
-    setTimeout(() => {
-      setAnalysisResult(sampleData);
+    try {
+      const formData = new FormData();
+      formData.append("company_name", inputData.company);
+      formData.append("job_description", inputData.jobDescription);
+      formData.append("position", inputData.position || "");
+      if (selectedFile) formData.append("file", selectedFile);
+      else formData.append("resume_text", inputData.resume);
+
+      const resp = await fetch("http://localhost:8000/upload", {
+        method: "POST",
+        body: formData,
+      });
+      if (!resp.ok) throw new Error("Upload failed");
+      const data = await resp.json();
+      setFileStatus({
+        file_id: data.file_id,
+        name: selectedFile?.name || "text",
+      });
+      setCurrentPage("processing");
+      setProcessingProgress("Starting analysis...");
+    } catch (e) {
+      alert(e.message);
       setLoading(false);
-      setCurrentPage("results");
-    }, 1500);
+    }
   };
 
   const startNewAnalysis = () => {
     setAnalysisResult(null);
-    setInputData({
-      resume: "",
-      jobDescription: "",
-      company: "",
-      position: "",
-    });
+    setSelectedFile(null);
+    setFileStatus(null);
+    setProcessingProgress("");
+    setInputData({ resume: "", jobDescription: "", company: "", position: "" });
     setCurrentPage("input");
   };
 
+  useEffect(() => {
+    // Load state from storage on first mount
+    const savedResult = localStorage.getItem("analysisResult");
+    const savedPage = localStorage.getItem("currentPage");
+    if (savedResult) setAnalysisResult(JSON.parse(savedResult));
+    if (savedPage) setCurrentPage(savedPage);
+  }, []);
+
+  useEffect(() => {
+    if (analysisResult) {
+      localStorage.setItem("analysisResult", JSON.stringify(analysisResult));
+    }
+  }, [analysisResult]);
+
+  useEffect(() => {
+    localStorage.setItem("currentPage", currentPage);
+  }, [currentPage]);
+
   return (
-    <div>
-      <Header onNewAnalysis={startNewAnalysis} showNewAnalysis={currentPage === "results"} onNavigate={setCurrentPage} />
-      {currentPage === "landing" && <Landing onStart={() => setCurrentPage("input")} />}
+    <>
+      <Header
+        onNewAnalysis={startNewAnalysis}
+        showNewAnalysis={currentPage !== "landing"}
+        onNavigate={setCurrentPage}
+      />
+      {currentPage === "landing" && (
+        <Landing onStart={() => setCurrentPage("input")} />
+      )}
       {currentPage === "input" && (
         <InputForm
           inputData={inputData}
           setInputData={setInputData}
+          selectedFile={selectedFile}
+          setSelectedFile={setSelectedFile}
           onAnalyze={analyzeJobFit}
           loading={loading}
         />
       )}
-      {currentPage === "results" && analysisResult && (
-        <ResultsDashboard data={analysisResult} onNewAnalysis={startNewAnalysis} loading={loading} />
+      {currentPage === "processing" && (
+        <ProcessingPage
+          progress={processingProgress}
+          fileName={fileStatus?.name}
+          onCancel={startNewAnalysis}
+        />
       )}
-    </div>
+      {currentPage === "results" && analysisResult && (
+        <ResultsDashboard
+          data={analysisResult}
+          onNewAnalysis={startNewAnalysis}
+          loading={loading}
+        />
+      )}
+    </>
   );
 }

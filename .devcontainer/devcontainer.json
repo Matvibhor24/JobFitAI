@@ -11,10 +11,11 @@
     "esbenp.prettier-vscode",
     "dsznajder.es7-react-js-snippets"
   ],
+  "runArgs": ["--env", "CHOKIDAR_USEPOLLING=true"],
   "settings": {
     "editor.formatOnSave": true
   },
-  "forwardPorts": [8000, 27017, 6379, 3000],
+  "forwardPorts": [8000, 6379],
   "postCreateCommand": "pip install -r requirements.txt",
   "shutdownAction": "stopCompose"
 }

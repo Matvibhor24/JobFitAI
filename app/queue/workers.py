@@ -1,94 +1,160 @@
-from ..db.collections.files import files_collection
-from bson import ObjectId
-from pdf2image import convert_from_path
+import json
 import os
 import base64
-from openai import OpenAI
+from bson import ObjectId
+from pdf2image import convert_from_path
 from dotenv import load_dotenv
+from ..db.collections.files import files_collection
+
+from app.agents.workflow import resume_workflow
+from app.agents.state import ResumeAnalysisState
+from app.llm_module.client_manager import LLMClientManager
+from app.llm_module.llm_caller import LLMCaller
 
 load_dotenv()
-
-client = OpenAI(
-    api_key=os.getenv('GOOGLE_API_KEY'),
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
-)
+client_manager = LLMClientManager()
+llm_caller = LLMCaller(client_manager)
 
 
-def encode_image(image_path):
-    with open(image_path, "rb") as image_file:
-        return base64.b64encode(image_file.read()).decode("utf-8")
+def encode_image(path: str) -> str:
+    with open(path, "rb") as f:
+        return base64.b64encode(f.read()).decode()
 
 
-async def process_file(id: str, file_path: str):
-    await files_collection.update_one({"_id": ObjectId(id)}, {
-        "$set": {
-            "status": "processing"
-        }
-    })
+async def process_file(file_id: str, file_path: str):
+    print(f"[Worker] process_file start for ID {file_id}")
+    doc = await files_collection.find_one({"_id": ObjectId(file_id)})
+    company = doc.get("company_name", "")
+    job_description = doc.get("job_description", "")
+    position = doc.get("position", "")
+    print(f"[Worker] Retrieved job details for ID {file_id}")
 
-    await files_collection.update_one({"_id": ObjectId(id)}, {
-        "$set": {
-            "status": "converting to images"
-        }
-    })
-
-    pages = convert_from_path(file_path)
-    images = []
-
-    for i, page in enumerate(pages):
-        image_save_path = f"/mnt/uploads/images/{id}/image-{i}.jpg"
-        os.makedirs(os.path.dirname(image_save_path), exist_ok=True)
-        page.save(image_save_path, 'JPEG')
-        images.append(image_save_path)
-
-    await files_collection.update_one({"_id": ObjectId(id)}, {
-        "$set": {
-            "status": "converting to images success"
-        }
-    })
-
-    images_base64 = [encode_image(img) for img in images]
-
-    res = client.chat.completions.create(
-        model="gemini-2.5-flash",
-        messages=[
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": "Roast this image of a resume.",
-                    },
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url":  f"data:image/jpeg;base64,{images_base64[0]}"
-                        },
-                    },
-                ],
-            }
-        ],
+    await files_collection.update_one(
+        {"_id": ObjectId(file_id)}, {"$set": {"status": "processing"}}
     )
 
-    # res = client.responses.create(
-    #     model="gpt-4o-mini",
-    #     input=[
-    #         {
-    #             "role": "user",
-    #             "content": [
-    #                 {"type": "input_text", "text": "whats in this image?"},
-    #                 {
-    #                     "type": "input_image",
-    #                     "image_url": f"data:image/jpeg;base64,{images_base64[0]}",
-    #                 },
-    #             ],
-    #         }
-    #     ],
-    # )
-    print(res.choices[0].message.content)
-    await files_collection.update_one({"_id": ObjectId(id)}, {
-        "$set": {
-            "status": "processed",
-            "result": res.choices[0].message.content
+    pages = convert_from_path(file_path)
+    print(f"[Worker] Converted PDF to {len(pages)} pages")
+    img_paths = []
+    for i, page in enumerate(pages):
+        img_path = f"/mnt/uploads/images/{file_id}/img-{i}.jpg"
+        os.makedirs(os.path.dirname(img_path), exist_ok=True)
+        page.save(img_path, "JPEG")
+        img_paths.append(img_path)
+
+    img_b64 = encode_image(img_paths[0])
+    print(f"[Worker] Extracting text via LLM for ID {file_id}")
+    messages = [
+        {"role": "system", "content": "Extract all text content from this resume image."},
+        {"role": "user", "content": f"data:image/jpeg;base64,{img_b64}"}
+    ]
+    try:
+        res = llm_caller.llm_call("gemini-2.5-flash", messages)
+        resume_text = res.choices[0].message.content
+    except Exception as e:
+        print(f"[Worker] LLM extraction failed: {e}")
+        resume_text = "Resume text extraction failed - using fallback"
+    print(f"[Worker] Extracted resume text length {len(resume_text)}")
+
+    initial_state = ResumeAnalysisState(
+        resume_text=resume_text,
+        job_description=job_description,
+        company_name=company,
+        position=position,
+        current_step="starting"
+    )
+    print(f"[Worker] Invoking LangGraph workflow for ID {file_id}")
+    final_state = resume_workflow.invoke(initial_state)
+    print(
+        f"[Worker] Workflow completed with score {final_state.job_fit_score}")
+
+    analysis_result = {
+        "jobFitAnalysis": {
+            "score": final_state.job_fit_score or 0,
+            "strengths": final_state.strengths or [],
+            "improvements": final_state.improvements or [],
+            "missingKeywords": final_state.missing_keywords or [],
+            "recommendations": final_state.recommendations or []
+        },
+        "interviewPrep": {
+            "technicalQuestions": final_state.technical_questions or [],
+            "behavioralQuestions": final_state.behavioral_questions or [],
+            "companySpecificQuestions": final_state.company_specific_questions or []
+        },
+        "companyInsights": {
+            "hiringTrends": final_state.hiring_trends or [],
+            "interviewProcess": final_state.interview_process or [],
+            "employeeExperiences": final_state.employee_experiences or []
+        },
+        "webResearch": {
+            "latestNews": final_state.latest_news or [],
+            "recentExperiences": final_state.recent_experiences or []
         }
-    })
+    }
+    print(f"[Worker] Built analysis_result for ID {file_id}")
+
+    await files_collection.update_one(
+        {"_id": ObjectId(file_id)},
+        {"$set": {
+            "status": "processed",
+            "score": final_state.job_fit_score or 0,
+            "result": json.dumps(analysis_result)
+        }}
+    )
+    print(f"[Worker] Updated DB for ID {file_id} with final results")
+
+
+async def process_text(file_id: str, resume_text: str):
+    print(f"[Worker] process_text start for ID {file_id}")
+    doc = await files_collection.find_one({"_id": ObjectId(file_id)})
+    company = doc.get("company_name", "")
+    job_description = doc.get("job_description", "")
+    position = doc.get("position", "")
+
+    initial_state = ResumeAnalysisState(
+        resume_text=resume_text,
+        job_description=job_description,
+        company_name=company,
+        position=position,
+        current_step="starting"
+    )
+
+    print(f"[Worker] Invoking LangGraph workflow for ID {file_id}")
+    final_state = resume_workflow.invoke(initial_state)
+    print(
+        f"[Worker] Workflow completed with score {final_state.job_fit_score}")
+
+    analysis_result = {
+        "jobFitAnalysis": {
+            "score": final_state.job_fit_score or 0,
+            "strengths": final_state.strengths or [],
+            "improvements": final_state.improvements or [],
+            "missingKeywords": final_state.missing_keywords or [],
+            "recommendations": final_state.recommendations or []
+        },
+        "interviewPrep": {
+            "technicalQuestions": final_state.technical_questions or [],
+            "behavioralQuestions": final_state.behavioral_questions or [],
+            "companySpecificQuestions": final_state.company_specific_questions or []
+        },
+        "companyInsights": {
+            "hiringTrends": final_state.hiring_trends or [],
+            "interviewProcess": final_state.interview_process or [],
+            "employeeExperiences": final_state.employee_experiences or []
+        },
+        "webResearch": {
+            "latestNews": final_state.latest_news or [],
+            "recentExperiences": final_state.recent_experiences or []
+        }
+    }
+    print(f"[Worker] Built analysis_result for ID {file_id}")
+
+    await files_collection.update_one(
+        {"_id": ObjectId(file_id)},
+        {"$set": {
+            "status": "processed",
+            "score": final_state.job_fit_score or 0,
+            "result": json.dumps(analysis_result)
+        }}
+    )
+    print(f"[Worker] Updated DB for ID {file_id} with final results")
