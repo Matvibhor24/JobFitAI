@@ -1,6 +1,6 @@
 import React from "react";
 
-export default function JobFitScore({ score = 0, backendResult = "" }) {
+export default function JobFitScore({ score = 0, backendResult = "", keywords = [] }) {
   // Clamp score between 0 and 100
   const clamp = (num, min, max) => Math.min(Math.max(num, min), max);
   const safeScore = clamp(score, 0, 100);
@@ -14,6 +14,10 @@ export default function JobFitScore({ score = 0, backendResult = "" }) {
   const b = Math.round(redRGB.b + (yellowRGB.b - redRGB.b) * ratio);
   const fillColor = `rgb(${r}, ${g}, ${b})`;
 
+  const recommendationText =
+    typeof backendResult === "string"
+      ? backendResult
+      : backendResult?.overall_recommendations || backendResult?.result || "";
   return (
     <div className="job-fit-score">
       <div className="score-section">
@@ -50,19 +54,37 @@ export default function JobFitScore({ score = 0, backendResult = "" }) {
           </g>
         </svg>
 
-        <p className="summary"><b>
-          {safeScore >= 80
-            ? "Excellent fit for the role"
-            : safeScore >= 60
-            ? "Good match, some areas to improve"
-            : "Low fit, consider revising your CV or role"}
-        </b></p>
+        <p className="summary">
+          <b>
+            {safeScore >= 80
+              ? "Excellent fit for the role"
+              : safeScore >= 60
+              ? "Good match, some areas to improve"
+              : "Low fit, consider revising your CV or role"}
+          </b>
+        </p>
       </div>
 
-      {backendResult && (
+      {/* {backendResult && (
         <div className="analysis-result">
           <h3>AI Match Analysis</h3>
           <p className="summary">{backendResult}</p>
+        </div>
+      )} */}
+      {recommendationText ? (
+        <div className="analysis-result">
+          <h3>AI Match Analysis</h3>
+          <p className="summary">{recommendationText}</p>
+        </div>
+      ) : null}
+      {keywords.length > 0 && (
+        <div className="analysis-result">
+          <h3>Matched Keywords</h3>
+
+            {keywords.map((k, i) => (
+              <li key={i}>✅ {k}</li>
+            ))}
+
         </div>
       )}
     </div>

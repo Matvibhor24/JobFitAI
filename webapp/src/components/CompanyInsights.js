@@ -1,28 +1,31 @@
 import React from "react";
 
-export default function CompanyInsights({ data }) {
+export default function CompanyInsights({ insights }) {
+  if (!insights || typeof insights !== "object") {
+    return <p>No insights available yet.</p>;
+  }
+
   return (
-    <div className="company-insights">
-      <h3>Hiring Trends</h3>
-      <ul>
-        {data.hiringTrends.map((item, idx) => (
-          <li key={idx}>📈 {item}</li>
-        ))}
-      </ul>
-
-      <h3>Interview Process</h3>
-      <ol>
-        {data.interviewProcess.map((step, idx) => (
-          <li key={idx}>{step}</li>
-        ))}
-      </ol>
-
-      <h3>Recent Employee Experiences</h3>
-      <ul>
-        {data.employeeExperiences.map((item, idx) => (
-          <li key={idx}>💬 {item}</li>
+    <div>
+      <h2 className="text-xl font-semibold mb-3">Company Insights</h2>
+      <ul className="list-disc ml-6 space-y-2">
+        {Object.entries(insights).map(([text, url], i) => (
+          <li key={i}>
+            {text}{" "}
+            {url && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline ml-1"
+              >
+                [Source]
+              </a>
+            )}
+          </li>
         ))}
       </ul>
     </div>
   );
 }
+

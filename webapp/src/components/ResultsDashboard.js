@@ -13,7 +13,10 @@ export default function ResultsDashboard({ data, onNewAnalysis, loading }) {
       <div className="container">
         <div className="results-header">
           <h2>Job Fit Analysis Results</h2>
-          <button className="btn btn--secondary btn--sm" onClick={onNewAnalysis}>
+          <button
+            className="btn btn--secondary btn--sm"
+            onClick={onNewAnalysis}
+          >
             New Analysis
           </button>
         </div>
@@ -55,12 +58,40 @@ export default function ResultsDashboard({ data, onNewAnalysis, loading }) {
           {loading && <p>Loading results...</p>}
 
           {!loading && activeTab === "jobFitScore" && (
-            <JobFitScore score={data.score} backendResult={data.result} />
+            <JobFitScore
+              score={data.score}
+              backendResult={data.result}
+              keywords={data.keywordsAlreadyMatched || []}
+            />
           )}
-          {!loading && activeTab === "cvOptimization" && <CVOptimization data={data.jobFitAnalysis} />}
-          {!loading && activeTab === "interviewPrep" && <InterviewPrep data={data.interviewPrep} />}
-          {!loading && activeTab === "companyInsights" && <CompanyInsights data={data.companyInsights} />}
-          {!loading && activeTab === "webResearch" && <WebResearch data={data.webResearch} />}
+
+          {!loading && activeTab === "cvOptimization" && (
+            <CVOptimization
+              data={{
+                strengths: data.strengths || [],
+                improvements: data.areasForImprovement || [],
+                missingKeywords:
+                  data.missingKeywords ||
+                  data.missingKeywordsToAdd ||
+                  data.missingKeywordsToAdd ||
+                  [],
+                recommendations: data.cvOptimizationSuggestions || [],
+              }}
+            />
+          )}
+
+          {!loading && activeTab === "interviewPrep" && (
+            <InterviewPrep interviewPrep={data.interviewPrep || {}} />
+          )}
+
+          {!loading && activeTab === "companyInsights" && (
+            <CompanyInsights insights={data.companyInsights || {}} />
+          )}
+
+          {!loading && activeTab === "webResearch" && (
+            <WebResearch webResearch={data.webResearch || {}} />
+          )}
+
         </div>
       </div>
     </section>

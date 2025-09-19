@@ -12,20 +12,18 @@ const sampleData = {
     missingKeywords: [],
     recommendations: [],
   },
-  interviewPrep: {
-    technicalQuestions: [],
-    behavioralQuestions: [],
-    companySpecificQuestions: [],
-  },
-  companyInsights: {
-    hiringTrends: [],
-    interviewProcess: [],
-    employeeExperiences: [],
-  },
-  webResearch: { latestNews: [], recentExperiences: [] },
+  interviewPrep: [],
+  companyInsights: [],
+  webResearch: [],      
 };
 
+
 export default function App() {
+  const [jobfitStatus, setJobfitStatus] = useState(null);
+  const [insightsStatus, setInsightsStatus] = useState(null);
+  const [agentStage, setAgentStage] = useState("");
+  const [agentProgress, setAgentProgress] = useState([]);
+
   const [currentPage, setCurrentPage] = useState("landing");
   const [analysisResult, setAnalysisResult] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -44,44 +42,80 @@ export default function App() {
       const eventSource = new EventSource(
         `http://localhost:8000/stream/${fileStatus.file_id}`
       );
-
+  
       eventSource.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
           console.log("SSE update:", data);
-
+  
           if (data.error) {
             setProcessingProgress(`Error: ${data.error}`);
             eventSource.close();
             return;
           }
+  
+          // update statuses
+          setProcessingProgress(data.status || "");
+          setJobfitStatus(data.jobfit_status || null);
+          setInsightsStatus(data.insights_status || null);
+          setAgentStage(data.agent_stage || "");
+          setAgentProgress(data.agent_progress || []);
+  
+          // merge jobfit results
+          setAnalysisResult((prev) => {
+            const hasJobFit = prev && typeof prev.score !== "undefined";
+            if (data.jobfit_status === "processed" && !hasJobFit) {
+              return {
+                ...(prev || {}),
+                score: data.score || 0,
+                result: data.result || "",
+                strengths: data.strengths || [],
+                weaknesses: data.weaknesses || [],
+                areasForImprovement: data.areas_for_improvement || [],
+                cvOptimizationSuggestions:
+                  data.cv_optimization_suggestions || [],
+                keywordsAlreadyMatched: data.keywords_already_matched || [],
+                missingKeywordsToAdd: data.missing_keywords_to_add || [],
 
-          setProcessingProgress(data.status);
-
-          if (data.status === "processed") {
-            // You only need score + result now
-            setAnalysisResult({
-              score: data.score || 0,
-              result: data.result || "",
-            });
-
+              };
+            }
+            return prev;
+          });
+  
+          // merge agent results
+          if (data.insights_status === "processed") {
+            setAnalysisResult((prev) => ({
+              ...(prev || {}),
+              companyInsights: data.company_insights || [],
+              interviewPrep: data.interview_prep || [],
+              webResearch: data.web_research || [],
+            }));
+          }
+          
+  
+          // ✅ move to results only when both are processed
+          if (
+            data.jobfit_status === "processed" &&
+            data.insights_status === "processed" &&
+            currentPage !== "results"
+          ) {
             setCurrentPage("results");
             setLoading(false);
-            eventSource.close();
           }
         } catch (err) {
           console.error("Invalid SSE data:", event.data);
         }
       };
-
+  
       eventSource.onerror = () => {
         setProcessingProgress("Connection error");
         eventSource.close();
       };
-
+  
       return () => eventSource.close();
     }
   }, [fileStatus, currentPage]);
+  
 
   const analyzeJobFit = async () => {
     setLoading(true);
@@ -103,6 +137,14 @@ export default function App() {
         file_id: data.file_id,
         name: selectedFile?.name || "text",
       });
+      localStorage.setItem(
+        "fileStatus",
+        JSON.stringify({
+          file_id: data.file_id,
+          name: selectedFile?.name || "text",
+        })
+      );
+
       setCurrentPage("processing");
       setProcessingProgress("Starting analysis...");
     } catch (e) {
@@ -112,12 +154,21 @@ export default function App() {
   };
 
   const startNewAnalysis = () => {
+    setJobfitStatus(null);
+    setInsightsStatus(null);
+    setAgentStage("");
+    setAgentProgress([]);
     setAnalysisResult(null);
     setSelectedFile(null);
     setFileStatus(null);
     setProcessingProgress("");
     setInputData({ resume: "", jobDescription: "", company: "", position: "" });
     setCurrentPage("input");
+
+    // Clear persisted state
+    localStorage.removeItem("analysisResult");
+    localStorage.removeItem("currentPage");
+    localStorage.removeItem("fileStatus");
   };
 
   useEffect(() => {
@@ -137,6 +188,15 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("currentPage", currentPage);
   }, [currentPage]);
+  useEffect(() => {
+    const savedResult = localStorage.getItem("analysisResult");
+    const savedPage = localStorage.getItem("currentPage");
+    const savedFileStatus = localStorage.getItem("fileStatus");
+
+    if (savedResult) setAnalysisResult(JSON.parse(savedResult));
+    if (savedPage) setCurrentPage(savedPage);
+    if (savedFileStatus) setFileStatus(JSON.parse(savedFileStatus));
+  }, []);
 
   return (
     <>
@@ -163,8 +223,13 @@ export default function App() {
           progress={processingProgress}
           fileName={fileStatus?.name}
           onCancel={startNewAnalysis}
+          jobfitStatus={jobfitStatus}
+          insightsStatus={insightsStatus}
+          agentStage={agentStage}
+          agentProgress={agentProgress}
         />
       )}
+
       {currentPage === "results" && analysisResult && (
         <ResultsDashboard
           data={analysisResult}

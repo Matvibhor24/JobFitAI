@@ -55,10 +55,7 @@ async def process_file(file_id: str, file_path: str):
     img_b64 = encode_image(img_paths[0])
 
     messages = [
-        {
-            "role": "system",
-            "content": SYSTEM_PROMPT
-        },
+        {"role": "system", "content": SYSTEM_PROMPT},
         {
             "role": "user",
             "content": [
@@ -73,85 +70,115 @@ async def process_file(file_id: str, file_path: str):
                     }}
                     """,
                 },
-                {
-                    "type": "image_url",
-                    "image_url": {
-                        "url": f"data:image/jpeg;base64,{img_b64}"
-                    },
-                },
+                {"type": "image_url", "image_url": {
+                    "url": f"data:image/jpeg;base64,{img_b64}"}},
             ],
-        }
+        },
     ]
+
+    # ✅ Safe defaults (always defined)
+    match_score = 0
+    overall_recommendations = ""
+    strengths = []
+    weaknesses = []
+    areas_for_improvement = []
+    cv_optimization_suggestions = []
+    keywords_already_matched = []
+    missing_keywords_to_add = []
+
     try:
         res = llm_caller.llm_call("gemini-2.5-flash", messages)
         raw_content = res.choices[0].message.content
-        analysis_result = parse_llm_json_response(raw_content)
-        # Extract keys individually, fallback if missing
-        match_score = analysis_result.get("match_score") if analysis_result else None
-        # strengths = analysis_result.get("strengths") if analysis_result else []
-        # weaknesses = analysis_result.get("weaknesses") if analysis_result else []
-        # areas_for_improvement = analysis_result.get("areas_for_improvement") if analysis_result else []
-        # cv_optimization_suggestions = analysis_result.get("cv_optimization_suggestions") if analysis_result else []
-        # interview_preparation_advice = analysis_result.get("interview_preparation_advice") if analysis_result else []
-        # company_insights = analysis_result.get("company_insights") if analysis_result else {}
-        # contacts_or_networking_suggestions = analysis_result.get("contacts_or_networking_suggestions") if analysis_result else []
-        overall_recommendations = analysis_result.get("overall_recommendations") if analysis_result else ""
+        analysis_result = parse_llm_json_response(raw_content) or {}
 
-        print ("score = ", match_score)
-        print ("SUMMARY = ",overall_recommendations)
+        match_score = analysis_result.get("match_score", 0)
+        overall_recommendations = analysis_result.get(
+            "overall_recommendations", "")
+        strengths = analysis_result.get("strengths", [])
+        weaknesses = analysis_result.get("weaknesses", [])
+        areas_for_improvement = analysis_result.get(
+            "areas_for_improvement", [])
+        cv_optimization_suggestions = analysis_result.get(
+            "cv_optimization_suggestions", [])
+        keywords_already_matched = analysis_result.get(
+            "keywords_already_matched", [])
+        missing_keywords_to_add = analysis_result.get(
+            "missing_keywords_to_add", [])
+
+        print("score = ", match_score)
+        print("SUMMARY = ", overall_recommendations)
+
     except Exception as e:
         print(f"[Worker] LLM analysis failed: {e}")
-        match_score = None
-        # strengths = []
-        # weaknesses = []
-        # areas_for_improvement = []
-        # cv_optimization_suggestions = []
-        # interview_preparation_advice = []
-        # company_insights = {}
-        # contacts_or_networking_suggestions = []
-        overall_recommendations = ""
+        # keep defaults already set above
 
     await files_collection.update_one(
         {"_id": ObjectId(file_id)},
         {"$set": {
             "status": "processed",
-            "score": match_score or 0,
-            # "result": json.dumps(analysis_result) if analysis_result else raw_content
-            "result":  overall_recommendations
-
+            "jobfit_status": "processed",
+            "score": match_score,
+            "result": overall_recommendations,
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "areas_for_improvement": areas_for_improvement,
+            "cv_optimization_suggestions": cv_optimization_suggestions,
+            "keywords_already_matched": keywords_already_matched,
+            "missing_keywords_to_add": missing_keywords_to_add,
         }}
     )
+
     print(f"[Worker] Updated DB for ID {file_id} with final results")
 
 
 async def process_text(file_id: str, resume_text: str):
     print(f"[Worker] process_text start for ID {file_id}")
+    await files_collection.update_one(
+        {"_id": ObjectId(file_id)}, {"$set": {"status": "processing"}}
+    )
     doc = await files_collection.find_one({"_id": ObjectId(file_id)})
     company = doc.get("company_name", "")
     job_description = doc.get("job_description", "")
     position = doc.get("position", "")
 
     messages = [
-        SYSTEM_PROMPT,
         {
-            "role": "user", 
+            "role": "system",
+            "content": SYSTEM_PROMPT
+        },
+        {
+            "role": "user",
             "content": f"Give me a detailed analysis of CV/Resume text: {resume_text} ,based on this specific job decription of company name - {company} for the postion of {position}. Job Description: {job_description}"
         }
     ]
+
+    # ✅ initialize defaults so they're always defined
+    score = 0
+    strengths = []
+    weaknesses = []
+    areas_for_improvement = []
+    cv_optimization_suggestions = []
+    keywords_already_matched = []
+    missing_keywords_to_add = []
+    result = {}
     try:
         res = llm_caller.llm_call("gemini-2.5-flash", messages)
         raw_content = res.choices[0].message.content
         analysis_result = parse_llm_json_response(raw_content)
-        
-        match_score = analysis_result.get("match_score") if analysis_result else None
-        strengths = analysis_result.get("strengths") if analysis_result else []
-        weaknesses = analysis_result.get("weaknesses") if analysis_result else []
-        areas_for_improvement = analysis_result.get("areas_for_improvement") if analysis_result else []
-        cv_optimization_suggestions = analysis_result.get("cv_optimization_suggestions") if analysis_result else []
-        interview_preparation_advice = analysis_result.get("interview_preparation_advice") if analysis_result else []
-        company_insights = analysis_result.get("company_insights") if analysis_result else {}
-        contacts_or_networking_suggestions = analysis_result.get("contacts_or_networking_suggestions") if analysis_result else []
-        overall_recommendations = analysis_result.get("overall_recommendations") if analysis_result else ""
+
+        match_score = analysis_result.get("match_score", 0)
+        overall_recommendations = analysis_result.get(
+            "overall_recommendations", "")
+        strengths = analysis_result.get("strengths", [])
+        weaknesses = analysis_result.get("weaknesses", [])
+        areas_for_improvement = analysis_result.get(
+            "areas_for_improvement", [])
+        cv_optimization_suggestions = analysis_result.get(
+            "cv_optimization_suggestions", [])
+        keywords_already_matched = analysis_result.get(
+            "keywords_already_matched", [])
+        missing_keywords_to_add = analysis_result.get(
+            "missing_keywords_to_add", [])
 
     except Exception as e:
         print(f"[Worker] LLM analysis failed: {e}")
@@ -169,9 +196,16 @@ async def process_text(file_id: str, resume_text: str):
         {"_id": ObjectId(file_id)},
         {"$set": {
             "status": "processed",
-            "score": match_score or 0,
-            # "result": json.dumps(analysis_result) if analysis_result else raw_content
-            "result": overall_recommendations
+            "jobfit_status": "processed",
+            "score": match_score,
+            "result": overall_recommendations,
+            "strengths": strengths,
+            "weaknesses": weaknesses,
+            "areas_for_improvement": areas_for_improvement,
+            "cv_optimization_suggestions": cv_optimization_suggestions,
+            "keywords_already_matched": keywords_already_matched,
+            "missing_keywords_to_add": missing_keywords_to_add,
         }}
     )
+
     print(f"[Worker] Updated DB for ID {file_id} with final results")

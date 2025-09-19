@@ -1,44 +1,31 @@
-import React, { useState } from "react";
+import React from "react";
 
-export default function InterviewPrep({ data }) {
-  const [activeTab, setActiveTab] = useState("technical");
-
-  const questionsByTab = {
-    technical: data.technicalQuestions,
-    behavioral: data.behavioralQuestions,
-    companySpecific: data.companySpecificQuestions,
-  };
+export default function InterviewPrep({ interviewPrep }) {
+  if (!interviewPrep || typeof interviewPrep !== "object") {
+    return <p>No interview preparation data available yet.</p>;
+  }
 
   return (
-    <div className="interview-prep">
-      <nav className="prep-tabs">
-        <button
-          className={activeTab === "technical" ? "active" : ""}
-          onClick={() => setActiveTab("technical")}
-        >
-          Technical
-        </button>
-        <button
-          className={activeTab === "behavioral" ? "active" : ""}
-          onClick={() => setActiveTab("behavioral")}
-        >
-          Behavioral
-        </button>
-        <button
-          className={activeTab === "companySpecific" ? "active" : ""}
-          onClick={() => setActiveTab("companySpecific")}
-        >
-          Company-Specific
-        </button>
-      </nav>
-
-      <ul className="questions-list">
-        {questionsByTab[activeTab].map((q, idx) => (
-          <li key={idx} className="question-item">
-            {q}
+    <div>
+      <h2 className="text-xl font-semibold mb-3">Interview Preparation</h2>
+      <ul className="list-disc ml-6 space-y-2">
+        {Object.entries(interviewPrep).map(([text, url], i) => (
+          <li key={i}>
+            {text}{" "}
+            {url && (
+              <a
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline ml-1"
+              >
+                [Source]
+              </a>
+            )}
           </li>
         ))}
       </ul>
     </div>
   );
 }
+
